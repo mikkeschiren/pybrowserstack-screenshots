@@ -6,11 +6,15 @@ import math, os, sys, time, re, getopt
 from PIL import Image
 import requests
 import browserstack_screenshots
+from ConfigParser import SafeConfigParser
 
 try:
     import simplejson as json
 except ImportError:
     import json
+
+parser = SafeConfigParser()
+parser.read('config.ini')
 
 MAX_RETRIES = 20
 OUTPUT_DIR_PHANTOMCSS = './output-phantomcss'
@@ -152,7 +156,7 @@ def get_screenshots(s, job_id):
     if screenshots_json:
         _mkdir(output_dir)
         try:
-            print 'Screenshot job complete. Saving files..'
+            print 'Screenshot job complete. Saving files.'
             _purge(output_dir, '.diff', 'stale diff')
             for i in screenshots_json['screenshots']:
                 filename = _build_filename_from_browserstack_json(i)
@@ -169,23 +173,23 @@ def get_screenshots(s, job_id):
             print e
             return False
     else:
-        print "Screenshots job incomplete. Waiting before retry.."
+        print "Screenshots job incomplete. Waiting before retry."
         return False
 
 class ScreenshotIncompleteError(Exception):
     pass
 
 def main(argv):
-    api_user = ''
-    api_token = ''
+    api_user = parser.get('api', 'user')
+    api_token = parser.get('api', 'token')
 
     """ Do not edit below this line """
 
     def usage():
-        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss'
+        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss\n-o, --output'
 
     try:
-        opts, args = getopt.getopt(argv, "c:p", ["config=", "phantomcss"])
+        opts, args = getopt.getopt(argv, "c:p:o", ["config=", "phantomcss", "output="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -198,6 +202,8 @@ def main(argv):
             global phantomcss, output_dir
             phantomcss = True
             output_dir = OUTPUT_DIR_PHANTOMCSS
+        if opt in ("-o", "--output"):
+            output_dir = arg
 
     auth = (api_user, api_token)
     config = _read_json(config_file) if config_file else None
