@@ -20,6 +20,7 @@ MAX_RETRIES = 20
 OUTPUT_DIR_PHANTOMCSS = './output-phantomcss'
 output_dir = './output'
 phantomcss = False
+EXTERNALURL = 'localhost/'
 
 def _build_sliced_filepath(filename, slice_count):
     """ append slice_count to the end of a filename """
@@ -155,6 +156,7 @@ def get_screenshots(s, job_id):
     screenshots_json = s.get_screenshots(job_id)
     if screenshots_json:
         _mkdir(output_dir)
+        _mkdir(EXTERNALURL)
         try:
             print 'Screenshot job complete. Saving files.'
             _purge(output_dir, '.diff', 'stale diff')
@@ -168,6 +170,9 @@ def get_screenshots(s, job_id):
                     _long_image_slice(base_image, base_image, 300)
                     os.remove(base_image)
             print 'Done saving.'
+            filenames = os.listdir(output_dir)
+            for filename in filenames:
+               print os.path.join(EXTERNALURL, filename)
             return True
         except OSError, e:
             print e
@@ -186,10 +191,10 @@ def main(argv):
     """ Do not edit below this line """
 
     def usage():
-        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss\n-o, --output'
+        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss\n-o, --output <output_dir>\n-m, --externalurl <external_url>'
 
     try:
-        opts, args = getopt.getopt(argv, "c:p:o", ["config=", "phantomcss", "output="])
+        opts, args = getopt.getopt(argv, "c:p:o:e", ["config=", "phantomcss", "output=", "externalurl="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -202,6 +207,8 @@ def main(argv):
             global phantomcss, output_dir
             phantomcss = True
             output_dir = OUTPUT_DIR_PHANTOMCSS
+        if opt in ("-e", "--externalurl"):
+            EXTERNALURL = arg
         if opt in ("-o", "--output"):
             output_dir = arg
 
