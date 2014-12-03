@@ -11,7 +11,7 @@ Tests for visual regressions using PhantomCSS.
 2. Create a config file for the device/os/browser combinations you wish to screenshot. See example_config/ for examples.
 3. Start the browserstack job and download baseline screenshots:
 ```bash
-python client.py --config <config_file>
+python client.py --config example_config/desktop_browsers.json
 ```
 
 ### PhantomCSS (experimental)

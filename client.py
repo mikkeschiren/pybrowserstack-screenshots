@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """ Initiate jobs at Browserstack Screenshots and downloads the images when
     they are complete. Optionally renames and slices images for use with
     PhantomCSS visual regression testing tool """
@@ -7,6 +8,7 @@ from PIL import Image
 import requests
 import browserstack_screenshots
 from ConfigParser import SafeConfigParser
+from colorama import Fore, Back, Style
 
 try:
     import simplejson as json
@@ -14,13 +16,17 @@ except ImportError:
     import json
 
 parser = SafeConfigParser()
+""" Read the config, changes in config should be done in the file"""
 parser.read('config.ini')
 
-MAX_RETRIES = 20
-OUTPUT_DIR_PHANTOMCSS = './output-phantomcss'
-output_dir = './output'
+""" Assign variables from config.ini """
+max_retries = parser.getfloat('config', 'max_retries')
+output_dir = parser.get('config', 'output_dir')
+output_dir_phantomcss = parser.get('config', 'output_dir_phantomcss')
 phantomcss = False
-EXTERNALURL = 'localhost/'
+api_user = parser.get('api', 'user')
+api_token = parser.get('api', 'token')
+
 
 def _build_sliced_filepath(filename, slice_count):
     """ append slice_count to the end of a filename """
@@ -51,8 +57,9 @@ def _build_filename_from_browserstack_json(j):
     filename = ''
     device = j['device'] if j['device'] else 'Desktop'
     if j['state'] == 'done' and j['image_url']:
+        fileName, fileExtension = os.path.splitext(j['image_url'])
         detail = [device, j['os'], j['os_version'],
-                j['browser'], j['browser_version'], '.jpg']
+                j['browser'], j['browser_version'], fileExtension]
         filename = '_'.join(item.replace(" ", "_") for item in detail if item)
     else:
         print 'screenshot timed out, ignoring this result'
@@ -148,7 +155,8 @@ def retry(tries, delay=3, backoff=2):
         return f_retry
     return deco_retry
 
-@retry(MAX_RETRIES, 2, 2)
+@retry(max_retries, 2, 2)
+
 def retry_get_screenshots(s, job_id):
     return get_screenshots(s, job_id)
 
@@ -156,23 +164,22 @@ def get_screenshots(s, job_id):
     screenshots_json = s.get_screenshots(job_id)
     if screenshots_json:
         _mkdir(output_dir)
-        _mkdir(EXTERNALURL)
         try:
             print 'Screenshot job complete. Saving files.'
             _purge(output_dir, '.diff', 'stale diff')
             for i in screenshots_json['screenshots']:
                 filename = _build_filename_from_browserstack_json(i)
                 base_image = os.path.join(output_dir, filename)
+                phantomcss_image = os.path.join(output_dir_phantomcss, filename)
                 if filename:
                     _download_file(i['image_url'], base_image)
                 if phantomcss and os.path.isfile(base_image):
                     # slice the image. slicing on css selector could be better..
-                    _long_image_slice(base_image, base_image, 300)
+                    _long_image_slice(base_image, phantomcss_image, 300)
                     os.remove(base_image)
             print 'Done saving.'
             filenames = os.listdir(output_dir)
-            for filename in filenames:
-               print os.path.join(EXTERNALURL, filename)
+
             return True
         except OSError, e:
             print e
@@ -185,16 +192,10 @@ class ScreenshotIncompleteError(Exception):
     pass
 
 def main(argv):
-    api_user = parser.get('api', 'user')
-    api_token = parser.get('api', 'token')
-
-    """ Do not edit below this line """
-
     def usage():
-        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss\n-o, --output <output_dir>\n-m, --externalurl <external_url>'
-
+        print 'Usage:\n-c, --config <config_file>\n-p, --phantomcss\n-o, --output <output_dir>'
     try:
-        opts, args = getopt.getopt(argv, "c:p:o:e", ["config=", "phantomcss", "output=", "externalurl="])
+        opts, args = getopt.getopt(argv, "c:p:o", ["config=", "phantomcss", "output="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -206,12 +207,10 @@ def main(argv):
         if opt in ("-p", "--phantomcss"):
             global phantomcss, output_dir
             phantomcss = True
-            output_dir = OUTPUT_DIR_PHANTOMCSS
-        if opt in ("-e", "--externalurl"):
-            EXTERNALURL = arg
+            output_dir = output_dir_phantomcss
         if opt in ("-o", "--output"):
             output_dir = arg
-
+            print output_dir
     auth = (api_user, api_token)
     config = _read_json(config_file) if config_file else None
     print 'using config {0}'.format(config_file)
