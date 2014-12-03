@@ -165,7 +165,8 @@ def get_screenshots(s, job_id):
     if screenshots_json:
         _mkdir(output_dir)
         try:
-            print 'Screenshot job complete. Saving files.'
+            print(Fore.GREEN + 'Screenshot job complete. Saving files.')
+            print(Fore.RESET + Back.RESET + Style.RESET_ALL)
             _purge(output_dir, '.diff', 'stale diff')
             for i in screenshots_json['screenshots']:
                 filename = _build_filename_from_browserstack_json(i)
@@ -185,7 +186,7 @@ def get_screenshots(s, job_id):
             print e
             return False
     else:
-        print "Screenshots job incomplete. Waiting before retry."
+        print(Fore.YELLOW + 'Screenshots job incomplete. Waiting before retry.')
         return False
 
 class ScreenshotIncompleteError(Exception):
